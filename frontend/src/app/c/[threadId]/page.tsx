@@ -26,6 +26,7 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable";
 import { AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
 
 export interface ArtifactInfo {
   id: string;
@@ -99,7 +100,9 @@ export default function ThreadDetail() {
   const { conversations } = useConversation();
 
   const [error, setError] = useState<string | null>(null);
-  const [selectedArtifact, setSelectedArtifact] = useState<ArtifactInfo | null>(null);
+  const [selectedArtifact, setSelectedArtifact] = useState<ArtifactInfo | null>(
+    null
+  );
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Use useStream hook from LangGraph SDK
@@ -311,7 +314,7 @@ export default function ThreadDetail() {
           const editedArgs = JSON.parse(editArgs);
           decisionType = { type: "edit", args: editedArgs };
         } catch {
-          alert("Invalid JSON format for edited arguments");
+          toast.error("Invalid JSON format for edited arguments");
           return;
         }
       } else {
@@ -321,7 +324,7 @@ export default function ThreadDetail() {
       // Build command in LangGraph Studio format
       const resumeRunId = interruptInfo.checkpointId || interruptInfo.runId;
       if (!resumeRunId) {
-        alert("Missing run ID. Cannot resume interrupted run.");
+        toast.error("Missing run ID. Cannot resume interrupted run.");
         return;
       }
       const command = {
@@ -351,7 +354,7 @@ export default function ThreadDetail() {
         mutateThread();
       }, 500);
     } catch (error) {
-      alert(
+      toast.error(
         error instanceof Error
           ? error.message
           : "Failed to send decision. Please try again."
@@ -447,7 +450,7 @@ export default function ThreadDetail() {
 
       {/* Main Content */}
       {selectedArtifact ? (
-        <ResizablePanelGroup direction="horizontal" className="flex-1 min-w-0">
+        <ResizablePanelGroup className="flex-1 min-w-0">
           <ResizablePanel defaultSize={60} minSize={30}>
             <div className="flex-1 flex flex-col min-w-0 h-full">
               {error && messages.length > 0 && (
@@ -480,16 +483,21 @@ export default function ThreadDetail() {
                   {/* Chat Messages Area */}
                   <div className="flex-1 overflow-y-auto overscroll-contain scroll-smooth">
                     <div className="max-w-5xl mx-auto w-full">
-                      {messages.map((message) => (
-                        <ChatMessage
-                          key={message.id}
-                          role={message.role}
-                          content={message.content}
-                          artifact={message.artifact}
-                          onArtifactClick={handleArtifactClick}
-                        />
-                      ))}
-                      {(loadingThread || (isSending && !isStreamingWithContent)) && (
+                      {messages.map((message) => {
+                        if (message.content === "" && !message.artifact)
+                          return null;
+                        return (
+                          <ChatMessage
+                            key={message.id}
+                            role={message.role}
+                            content={message.content}
+                            artifact={message.artifact}
+                            onArtifactClick={handleArtifactClick}
+                          />
+                        );
+                      })}
+                      {(loadingThread ||
+                        (isSending && !isStreamingWithContent)) && (
                         <div className="flex gap-4 px-4 py-6">
                           <div className="w-8 h-8 rounded-full bg-secondary shrink-0 flex items-center justify-center">
                             <span className="text-sm text-secondary-foreground">
@@ -566,16 +574,21 @@ export default function ThreadDetail() {
               {/* Chat Messages Area */}
               <div className="flex-1 overflow-y-auto overscroll-contain scroll-smooth">
                 <div className="max-w-5xl mx-auto w-full">
-                  {messages.map((message) => (
-                    <ChatMessage
-                      key={message.id}
-                      role={message.role}
-                      content={message.content}
-                      artifact={message.artifact}
-                      onArtifactClick={handleArtifactClick}
-                    />
-                  ))}
-                  {(loadingThread || (isSending && !isStreamingWithContent)) && (
+                  {messages.map((message) => {
+                    if (message.content === "" && !message.artifact)
+                      return null;
+                    return (
+                      <ChatMessage
+                        key={message.id}
+                        role={message.role}
+                        content={message.content}
+                        artifact={message.artifact}
+                        onArtifactClick={handleArtifactClick}
+                      />
+                    );
+                  })}
+                  {(loadingThread ||
+                    (isSending && !isStreamingWithContent)) && (
                     <div className="flex gap-4 px-4 py-6">
                       <div className="w-8 h-8 rounded-full bg-secondary shrink-0 flex items-center justify-center">
                         <span className="text-sm text-secondary-foreground">
