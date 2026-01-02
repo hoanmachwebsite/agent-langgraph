@@ -1,0 +1,16 @@
+{
+  "recommendations": [
+    "aaron-bond.better-comments",
+    "codezombiech.gitignore",
+    "eamodio.gitlens",
+    "esbenp.prettier-vscode",
+    "figma.figma-vscode-extension",
+    "christian-kohler.path-intellisense",
+    "bradlc.vscode-tailwindcss",
+    "dbaeumer.vscode-eslint",
+    "mikestead.dotenv",
+    "stivo.tailwind-fold",
+    "statelyai.stately-vscode",
+    "zxh404.vscode-proto3"
+  ]
+}
