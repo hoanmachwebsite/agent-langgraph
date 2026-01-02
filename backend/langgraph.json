@@ -1,0 +1,10 @@
+{
+    "dockerfile_lines": [],
+    "python_version": "3.12",
+    "dependencies": ["."],
+    "graphs": {
+      "deep-agent": "./main.py:agent"
+    },
+    "env": "./.env",
+    "image_distro": "wolfi"
+  }
