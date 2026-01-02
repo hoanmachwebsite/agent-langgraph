@@ -349,11 +349,6 @@ export default function ThreadDetail() {
 
       // Clear interrupt info after successful submit
       clearInterrupt();
-
-      // Refresh thread details to get updated messages
-      setTimeout(() => {
-        mutateThread();
-      }, 500);
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -387,7 +382,7 @@ export default function ThreadDetail() {
       // Refresh thread details after sending
       setTimeout(() => {
         mutateThread();
-      }, 500);
+      }, 1000);
     } catch (err) {
       setError(
         err instanceof Error
@@ -625,9 +620,7 @@ export default function ThreadDetail() {
                   onSend={handleSendMessage}
                   onStop={handleStopStream}
                   disabled={
-                    loadingThread ||
-                    !assistant?.assistantId ||
-                    !!interruptInfo
+                    loadingThread || !assistant?.assistantId || !!interruptInfo
                   }
                   centered={false}
                   isStreaming={isSending}
