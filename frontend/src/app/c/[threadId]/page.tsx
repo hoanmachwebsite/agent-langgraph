@@ -6,6 +6,7 @@ import { useStream } from "@langchain/langgraph-sdk/react";
 import { Sidebar } from "@/components/Sidebar";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
+import { ArtifactViewer } from "@/components/ArtifactViewer";
 import { useThread } from "@/hooks/use-thread";
 import { useAssistant } from "@/hooks/use-assistant";
 import { useConversation } from "@/hooks/use-conversations";
@@ -19,9 +20,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "@/components/ui/resizable";
 import { AlertTriangle } from "lucide-react";
 
-interface ArtifactInfo {
+export interface ArtifactInfo {
   id: string;
   type: string;
   title: string;
@@ -93,6 +99,7 @@ export default function ThreadDetail() {
   const { conversations } = useConversation();
 
   const [error, setError] = useState<string | null>(null);
+  const [selectedArtifact, setSelectedArtifact] = useState<ArtifactInfo | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Use useStream hook from LangGraph SDK
@@ -274,6 +281,14 @@ export default function ThreadDetail() {
     router.push(`/c/${id}`);
   };
 
+  const handleArtifactClick = (artifact: ArtifactInfo) => {
+    setSelectedArtifact(artifact);
+  };
+
+  const handleCloseArtifact = () => {
+    setSelectedArtifact(null);
+  };
+
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -431,79 +446,170 @@ export default function ThreadDetail() {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {error && messages.length > 0 && (
-          <div className="bg-destructive/10 text-destructive px-4 py-2 text-sm text-center">
-            {error}
-          </div>
-        )}
+      {selectedArtifact ? (
+        <ResizablePanelGroup direction="horizontal" className="flex-1 min-w-0">
+          <ResizablePanel defaultSize={60} minSize={30}>
+            <div className="flex-1 flex flex-col min-w-0 h-full">
+              {error && messages.length > 0 && (
+                <div className="bg-destructive/10 text-destructive px-4 py-2 text-sm text-center">
+                  {error}
+                </div>
+              )}
 
-        {messages.length === 0 ? (
-          /* Empty State - Centered */
-          <div className="flex-1 flex flex-col items-center justify-center px-4">
-            <div className="text-center max-w-2xl w-full mb-8">
-              <h1 className="text-4xl font-semibold mb-4 text-foreground">
-                Thread {threadId?.slice(0, 8)}
-              </h1>
-              <p className="text-muted-foreground">
-                This thread is empty. Start a conversation below.
-              </p>
-            </div>
-            <div className="w-full max-w-3xl">
-              <ChatInput
-                onSend={handleSendMessage}
-                disabled={loadingThread || !assistant?.assistantId}
-                centered={true}
-              />
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Chat Messages Area */}
-            <div className="flex-1 overflow-y-auto overscroll-contain scroll-smooth">
-              <div className="max-w-5xl mx-auto w-full">
-                {messages.map((message) => (
-                  <ChatMessage
-                    key={message.id}
-                    role={message.role}
-                    content={message.content}
-                    artifact={message.artifact}
-                  />
-                ))}
-                {(loadingThread || (isSending && !isStreamingWithContent)) && (
-                  <div className="flex gap-4 px-4 py-6">
-                    <div className="w-8 h-8 rounded-full bg-secondary shrink-0 flex items-center justify-center">
-                      <span className="text-sm text-secondary-foreground">
-                        AI
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 pt-1">
-                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
+              {messages.length === 0 ? (
+                /* Empty State - Centered */
+                <div className="flex-1 flex flex-col items-center justify-center px-4">
+                  <div className="text-center max-w-2xl w-full mb-8">
+                    <h1 className="text-4xl font-semibold mb-4 text-foreground">
+                      Thread {threadId?.slice(0, 8)}
+                    </h1>
+                    <p className="text-muted-foreground">
+                      This thread is empty. Start a conversation below.
+                    </p>
+                  </div>
+                  <div className="w-full max-w-3xl">
+                    <ChatInput
+                      onSend={handleSendMessage}
+                      disabled={loadingThread || !assistant?.assistantId}
+                      centered={true}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Chat Messages Area */}
+                  <div className="flex-1 overflow-y-auto overscroll-contain scroll-smooth">
+                    <div className="max-w-5xl mx-auto w-full">
+                      {messages.map((message) => (
+                        <ChatMessage
+                          key={message.id}
+                          role={message.role}
+                          content={message.content}
+                          artifact={message.artifact}
+                          onArtifactClick={handleArtifactClick}
+                        />
+                      ))}
+                      {(loadingThread || (isSending && !isStreamingWithContent)) && (
+                        <div className="flex gap-4 px-4 py-6">
+                          <div className="w-8 h-8 rounded-full bg-secondary shrink-0 flex items-center justify-center">
+                            <span className="text-sm text-secondary-foreground">
+                              AI
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 pt-1">
+                            <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                            <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                            <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
+                          </div>
+                        </div>
+                      )}
+                      <div ref={messagesEndRef} />
                     </div>
                   </div>
-                )}
-                <div ref={messagesEndRef} />
+
+                  {/* Chat Input - Fixed at bottom */}
+                  <div className="sticky bottom-0 bg-background">
+                    <ChatInput
+                      onSend={handleSendMessage}
+                      disabled={
+                        loadingThread ||
+                        !assistant?.assistantId ||
+                        isSending ||
+                        !!interruptInfo
+                      }
+                      centered={false}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel defaultSize={40} minSize={20}>
+            {selectedArtifact && (
+              <ArtifactViewer
+                artifact={selectedArtifact}
+                onClose={handleCloseArtifact}
+              />
+            )}
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      ) : (
+        <div className="flex-1 flex flex-col min-w-0">
+          {error && messages.length > 0 && (
+            <div className="bg-destructive/10 text-destructive px-4 py-2 text-sm text-center">
+              {error}
+            </div>
+          )}
+
+          {messages.length === 0 ? (
+            /* Empty State - Centered */
+            <div className="flex-1 flex flex-col items-center justify-center px-4">
+              <div className="text-center max-w-2xl w-full mb-8">
+                <h1 className="text-4xl font-semibold mb-4 text-foreground">
+                  Thread {threadId?.slice(0, 8)}
+                </h1>
+                <p className="text-muted-foreground">
+                  This thread is empty. Start a conversation below.
+                </p>
+              </div>
+              <div className="w-full max-w-3xl">
+                <ChatInput
+                  onSend={handleSendMessage}
+                  disabled={loadingThread || !assistant?.assistantId}
+                  centered={true}
+                />
               </div>
             </div>
+          ) : (
+            <>
+              {/* Chat Messages Area */}
+              <div className="flex-1 overflow-y-auto overscroll-contain scroll-smooth">
+                <div className="max-w-5xl mx-auto w-full">
+                  {messages.map((message) => (
+                    <ChatMessage
+                      key={message.id}
+                      role={message.role}
+                      content={message.content}
+                      artifact={message.artifact}
+                      onArtifactClick={handleArtifactClick}
+                    />
+                  ))}
+                  {(loadingThread || (isSending && !isStreamingWithContent)) && (
+                    <div className="flex gap-4 px-4 py-6">
+                      <div className="w-8 h-8 rounded-full bg-secondary shrink-0 flex items-center justify-center">
+                        <span className="text-sm text-secondary-foreground">
+                          AI
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 pt-1">
+                        <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                        <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                        <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
+                      </div>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+              </div>
 
-            {/* Chat Input - Fixed at bottom */}
-            <div className="sticky bottom-0 bg-background">
-              <ChatInput
-                onSend={handleSendMessage}
-                disabled={
-                  loadingThread ||
-                  !assistant?.assistantId ||
-                  isSending ||
-                  !!interruptInfo
-                }
-                centered={false}
-              />
-            </div>
-          </>
-        )}
-      </div>
+              {/* Chat Input - Fixed at bottom */}
+              <div className="sticky bottom-0 bg-background">
+                <ChatInput
+                  onSend={handleSendMessage}
+                  disabled={
+                    loadingThread ||
+                    !assistant?.assistantId ||
+                    isSending ||
+                    !!interruptInfo
+                  }
+                  centered={false}
+                />
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Interrupt Confirmation Dialog */}
       <Dialog

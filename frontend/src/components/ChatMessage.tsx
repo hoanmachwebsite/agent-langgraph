@@ -17,22 +17,26 @@ interface ChatMessageProps {
   role: "user" | "assistant";
   content: string;
   artifact?: ArtifactInfo;
+  onArtifactClick?: (artifact: ArtifactInfo) => void;
 }
 
-export function ChatMessage({ role, content, artifact }: ChatMessageProps) {
+export function ChatMessage({ role, content, artifact, onArtifactClick }: ChatMessageProps) {
   const isUser = role === "user";
   const [isArtifactExpanded, setIsArtifactExpanded] = useState(false);
 
   const handleArtifactClick = () => {
     if (artifact) {
-      // Extract chart type from artifact.type (e.g., "chart/ontologies" -> "ontologies")
-      const chartType = artifact.type.includes("/")
-        ? artifact.type.split("/")[1]
-        : artifact.type.replace("chart/", "");
-      
-      // Navigate to chart API endpoint
-      const artifactUrl = `/api/charts/${chartType}?id=${artifact.id}`;
-      window.open(artifactUrl, "_blank");
+      if (onArtifactClick) {
+        onArtifactClick(artifact);
+      } else {
+        // Fallback: open in new window if no callback provided
+        const chartType = artifact.type.includes("/")
+          ? artifact.type.split("/")[1]
+          : artifact.type.replace("chart/", "");
+        
+        const artifactUrl = `/api/charts/${chartType}?id=${artifact.id}`;
+        window.open(artifactUrl, "_blank");
+      }
     }
   };
 
