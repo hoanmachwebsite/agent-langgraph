@@ -111,6 +111,7 @@ export default function ThreadDetail() {
     interrupt,
     submit,
     isLoading: isSending,
+    stop,
   } = useStream({
     apiUrl: process.env.NEXT_PUBLIC_LANGGRAPH_API_URL || "",
     apiKey: process.env.NEXT_PUBLIC_LANGGRAPH_API_KEY || "",
@@ -362,6 +363,13 @@ export default function ThreadDetail() {
     }
   };
 
+  const handleStopStream = () => {
+    if (stop) {
+      stop();
+      toast.info("Stream stopped");
+    }
+  };
+
   const handleSendMessage = async (content: string) => {
     if (!threadId || !assistant?.assistantId) {
       setError("Assistant ID is required");
@@ -473,8 +481,10 @@ export default function ThreadDetail() {
                   <div className="w-full max-w-3xl">
                     <ChatInput
                       onSend={handleSendMessage}
+                      onStop={handleStopStream}
                       disabled={loadingThread || !assistant?.assistantId}
                       centered={true}
+                      isStreaming={isSending}
                     />
                   </div>
                 </div>
@@ -519,13 +529,14 @@ export default function ThreadDetail() {
                   <div className="sticky bottom-0 bg-background">
                     <ChatInput
                       onSend={handleSendMessage}
+                      onStop={handleStopStream}
                       disabled={
                         loadingThread ||
                         !assistant?.assistantId ||
-                        isSending ||
                         !!interruptInfo
                       }
                       centered={false}
+                      isStreaming={isSending}
                     />
                   </div>
                 </>
@@ -564,8 +575,10 @@ export default function ThreadDetail() {
               <div className="w-full max-w-3xl">
                 <ChatInput
                   onSend={handleSendMessage}
+                  onStop={handleStopStream}
                   disabled={loadingThread || !assistant?.assistantId}
                   centered={true}
+                  isStreaming={isSending}
                 />
               </div>
             </div>
@@ -610,13 +623,14 @@ export default function ThreadDetail() {
               <div className="sticky bottom-0 bg-background">
                 <ChatInput
                   onSend={handleSendMessage}
+                  onStop={handleStopStream}
                   disabled={
                     loadingThread ||
                     !assistant?.assistantId ||
-                    isSending ||
                     !!interruptInfo
                   }
                   centered={false}
+                  isStreaming={isSending}
                 />
               </div>
             </>

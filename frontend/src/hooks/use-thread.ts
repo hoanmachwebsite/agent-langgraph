@@ -18,9 +18,11 @@ export function useThread(threadId: string) {
     mutate: mutateThread,
     isLoading: loadingThread,
   } = useSWR<any>(threadId ? `/api/conversations/${threadId}` : null, fetcher, {
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-    refreshInterval: 0,
+    revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+    revalidateOnMount: true,
+    dedupingInterval: 0,
+    keepPreviousData: false,
   });
   return {
     dataThread,

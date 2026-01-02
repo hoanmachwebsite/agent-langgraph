@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send } from "lucide-react";
+import { Send, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Suggestion {
@@ -13,9 +13,11 @@ interface Suggestion {
 
 interface ChatInputProps {
   onSend: (message: string) => void;
+  onStop?: () => void;
   suggestions?: Suggestion[];
   disabled?: boolean;
   centered?: boolean;
+  isStreaming?: boolean;
 }
 
 const defaultSuggestions: Suggestion[] = [
@@ -27,9 +29,11 @@ const defaultSuggestions: Suggestion[] = [
 
 export function ChatInput({
   onSend,
+  onStop,
   suggestions = defaultSuggestions,
   disabled = false,
   centered = false,
+  isStreaming = false,
 }: ChatInputProps) {
   const [message, setMessage] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -92,14 +96,26 @@ export function ChatInput({
               )}
             />
           </div>
-          <Button
-            onClick={handleSend}
-            disabled={!message.trim() || disabled}
-            size="icon"
-            className="shrink-0 h-9 w-9"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
+          {isStreaming ? (
+            <Button
+              onClick={onStop}
+              disabled={disabled}
+              size="icon"
+              variant="destructive"
+              className="shrink-0 h-9 w-9"
+            >
+              <Square className="w-4 h-4" />
+            </Button>
+          ) : (
+            <Button
+              onClick={handleSend}
+              disabled={!message.trim() || disabled}
+              size="icon"
+              className="shrink-0 h-9 w-9"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          )}
         </div>
         {!centered && (
           <div className="text-xs text-muted-foreground text-center mt-2">
