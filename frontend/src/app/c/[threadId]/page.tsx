@@ -21,11 +21,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
 
+interface ArtifactInfo {
+  id: string;
+  type: string;
+  title: string;
+  content: string;
+}
+
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp?: Date;
+  artifact?: ArtifactInfo;
 }
 
 // Helper function to extract content from message
@@ -48,6 +56,31 @@ function extractContent(content: unknown): string {
       .join("");
   }
   return JSON.stringify(content);
+}
+
+// Helper function to parse artifact from tool message
+function parseArtifact(content: string): ArtifactInfo | null {
+  try {
+    const parsed = JSON.parse(content);
+    if (
+      parsed.type === "tool_use" &&
+      parsed.name === "artifacts" &&
+      parsed.input
+    ) {
+      const input = parsed.input;
+      if (input.command === "create" && input.id && input.type && input.title) {
+        return {
+          id: input.id,
+          type: input.type,
+          title: input.title,
+          content: input.content || "",
+        };
+      }
+    }
+  } catch {
+    // Not a valid artifact JSON
+  }
+  return null;
 }
 
 export default function ThreadDetail() {
@@ -93,52 +126,124 @@ export default function ThreadDetail() {
       streamMessages && streamMessages.length > 0 && isSending;
 
     if (useStreamMessages) {
-      return streamMessages
-        .filter((msg: unknown) => {
-          const msgObj = msg as { type?: string };
-          return msgObj.type === "human" || msgObj.type === "ai";
-        })
-        .map((msg: unknown, index: number) => {
-          const msgObj = msg as {
-            type?: string;
-            content?: unknown;
-            id?: string;
-          };
+      const processedMessages: Message[] = [];
 
-          // Map type to role: "human" -> "user", "ai" -> "assistant"
+      streamMessages.forEach((msg: unknown, index: number) => {
+        const msgObj = msg as {
+          type?: string;
+          content?: unknown;
+          id?: string;
+          name?: string;
+        };
+
+        // Handle tool messages with create_artifact
+        if (msgObj.type === "tool" && msgObj.name === "create_artifact") {
+          const content = extractContent(msgObj.content);
+          const artifact = parseArtifact(content);
+
+          if (artifact) {
+            // Find the most recent AI message to attach artifact to
+            let lastAIMessage: Message | null = null;
+            for (let i = processedMessages.length - 1; i >= 0; i--) {
+              if (processedMessages[i].role === "assistant") {
+                lastAIMessage = processedMessages[i];
+                break;
+              }
+            }
+
+            if (lastAIMessage) {
+              // Attach artifact to the most recent AI message
+              lastAIMessage.artifact = artifact;
+            } else {
+              // Create a new AI message for the artifact if no AI message found
+              processedMessages.push({
+                id: msgObj.id || `artifact-${index}`,
+                role: "assistant",
+                content: "",
+                artifact,
+              });
+            }
+          }
+          return;
+        }
+
+        // Handle human and AI messages
+        if (msgObj.type === "human" || msgObj.type === "ai") {
           const role = msgObj.type === "human" ? "user" : "assistant";
-
           const content = extractContent(msgObj.content);
 
-          return {
+          const message: Message = {
             id: msgObj.id || `stream-${index}`,
             role,
             content,
           };
-        });
+
+          processedMessages.push(message);
+        }
+      });
+
+      return processedMessages;
     }
 
     // Use thread messages (this should have the persisted messages)
     if (Array.isArray(threadMessages) && threadMessages.length > 0) {
-      return threadMessages
-        .filter((msg) => {
-          const msgType = (msg as { type?: string }).type;
-          return msgType === "human" || msgType === "ai";
-        })
-        .map((msg, index) => {
-          const msgType = (msg as { type?: string }).type;
+      const processedMessages: Message[] = [];
 
-          // Map type to role: "human" -> "user", "ai" -> "assistant"
+      threadMessages.forEach((msg, index) => {
+        const msgType = (msg as { type?: string; name?: string }).type;
+        const msgName = (msg as { type?: string; name?: string }).name;
+
+        // Handle tool messages with create_artifact
+        if (msgType === "tool" && msgName === "create_artifact") {
+          const content = extractContent(
+            (msg as { content?: unknown }).content
+          );
+          const artifact = parseArtifact(content);
+
+          if (artifact) {
+            // Find the most recent AI message to attach artifact to
+            let lastAIMessage: Message | null = null;
+            for (let i = processedMessages.length - 1; i >= 0; i--) {
+              if (processedMessages[i].role === "assistant") {
+                lastAIMessage = processedMessages[i];
+                break;
+              }
+            }
+
+            if (lastAIMessage) {
+              // Attach artifact to the most recent AI message
+              lastAIMessage.artifact = artifact;
+            } else {
+              // Create a new AI message for the artifact if no AI message found
+              processedMessages.push({
+                id: (msg as { id?: string }).id || `artifact-${index}`,
+                role: "assistant",
+                content: "",
+                artifact,
+              });
+            }
+          }
+          return;
+        }
+
+        // Handle human and AI messages
+        if (msgType === "human" || msgType === "ai") {
           const role = msgType === "human" ? "user" : "assistant";
+          const content = extractContent(
+            (msg as { content?: unknown }).content
+          );
 
-          const content = extractContent(msg.content);
-
-          return {
+          const message: Message = {
             id: (msg as { id?: string }).id || `thread-${index}`,
             role,
             content,
           };
-        });
+
+          processedMessages.push(message);
+        }
+      });
+
+      return processedMessages;
     }
 
     return [];
@@ -362,6 +467,7 @@ export default function ThreadDetail() {
                     key={message.id}
                     role={message.role}
                     content={message.content}
+                    artifact={message.artifact}
                   />
                 ))}
                 {(loadingThread || (isSending && !isStreamingWithContent)) && (

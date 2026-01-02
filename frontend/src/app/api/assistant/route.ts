@@ -9,7 +9,6 @@ export async function GET() {
     }
 
     const thread = threads[0];
-    // Extract assistant ID from thread (LangGraph SDK may use different property names)
     const assistantId = thread?.metadata?.assistant_id || null;
 
     if (!assistantId) {
