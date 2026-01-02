@@ -13,7 +13,13 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
   const isUser = role === "user";
 
   return (
-    <div className={cn("flex gap-4 px-4 py-6 group", !isUser && "bg-muted/30")}>
+    <div
+      className={cn(
+        "flex gap-4 px-4 py-6 group",
+        !isUser && "bg-muted/30",
+        isUser && "flex-row-reverse"
+      )}
+    >
       <Avatar className="w-8 h-8 shrink-0">
         <AvatarFallback
           className={cn(
@@ -27,15 +33,17 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
         </AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0">
-        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed">
-          {isUser ? (
-            <p className="text-foreground whitespace-pre-wrap wrap-break-word leading-relaxed">
+        {isUser ? (
+          <div className="flex justify-end">
+            <p className="text-foreground whitespace-pre-wrap wrap-break-word leading-relaxed text-right max-w-[80%]">
               {content}
             </p>
-          ) : (
+          </div>
+        ) : (
+          <div className="prose prose-sm dark:prose-invert prose-p:leading-relaxed max-w-[80%]">
             <ReactMarkdown>{content}</ReactMarkdown>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

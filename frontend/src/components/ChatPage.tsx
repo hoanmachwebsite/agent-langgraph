@@ -71,7 +71,7 @@ export function ChatPage() {
           <>
             {/* Chat Messages Area */}
             <div className="flex-1 overflow-y-auto overscroll-contain scroll-smooth">
-              <div className="max-w-3xl mx-auto w-full">
+              <div className="max-w-5xl mx-auto w-full">
                 {messages.map((message) => (
                   <ChatMessage
                     key={message.id}

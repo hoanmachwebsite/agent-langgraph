@@ -73,7 +73,7 @@ export function ChatInput({
       className={cn("bg-background", centered ? "" : "border-t border-border")}
     >
       {/* Input Area */}
-      <div className={cn("px-4 max-w-3xl mx-auto", centered ? "py-0" : "py-4")}>
+      <div className={cn("px-4 max-w-5xl mx-auto", centered ? "py-0" : "py-4")}>
         <div className="flex items-center gap-2">
           <div className="flex-1 relative">
             <Textarea
@@ -112,7 +112,7 @@ export function ChatInput({
       {showSuggestions && (
         <div
           className={cn(
-            "px-4 max-w-3xl mx-auto",
+            "px-4 max-w-5xl mx-auto",
             centered ? "pt-4 pb-0" : "pt-2 pb-4"
           )}
         >
