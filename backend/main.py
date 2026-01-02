@@ -29,7 +29,7 @@ def send_email(to: str, subject: str, body: str) -> str:
 def create_artifact(
     title: str,
     content: str = "",
-    artifact_type: str = "application/vnd.ant.react",
+    artifact_type: str = "application/react",
     artifact_id: str = None,
     chart_type: str = None,
     chart_data: str = None
@@ -66,19 +66,30 @@ def create_artifact(
     - "Tạo l1000 chart" or "Create L1000 chart" → use chart_type="l1000" and chart_data
     - "Tạo similar table" or "Create similar table" → use chart_type="similar_table" and chart_data
     - "Tạo opposite table" or "Create opposite table" → use chart_type="opposite_table" and chart_data
+    - "Tạo kea_down chart" or "Create KEA down" → use chart_type="kea_down" and chart_data
+    - "Tạo kea_up chart" or "Create KEA up" → use chart_type="kea_up" and chart_data
+    - "Tạo ppi_down chart" or "Create PPI down" → use chart_type="ppi_down" and chart_data
+    - "Tạo ppi_up chart" or "Create PPI up" → use chart_type="ppi_up" and chart_data
+    - "Tạo tfea_down chart" or "Create TFEA down" → use chart_type="tfea_down" and chart_data
+    - "Tạo tfea_up chart" or "Create TFEA up" → use chart_type="tfea_up" and chart_data
+    - "Tạo x2k_down chart" or "Create X2K down" → use chart_type="x2k_down" and chart_data
+    - "Tạo x2k_up chart" or "Create X2K up" → use chart_type="x2k_up" and chart_data
     
     Args:
         title: The title/name of the artifact file (e.g., "app.py", "config.json", "Heatmap Chart")
         content: The full content of the artifact (code, text, etc.). For charts, this can be empty.
-        artifact_type: The MIME type (default: application/vnd.ant.react)
+        artifact_type: The MIME type (default: application/react)
                       For charts, use "chart/heatmap", "chart/volcano", "chart/table", "chart/go", 
                       "chart/kegg", "chart/cell_type", "chart/diseases", "chart/pathways", 
                       "chart/ontologies", "chart/transcription", "chart/l1000", "chart/similar_table", 
-                      or "chart/opposite_table"
+                      "chart/opposite_table", "chart/kea_down", "chart/kea_up", "chart/ppi_down", 
+                      "chart/ppi_up", "chart/tfea_down", "chart/tfea_up", "chart/x2k_down", 
+                      or "chart/x2k_up"
         artifact_id: Optional unique ID (auto-generated if not provided)
         chart_type: Optional chart type. Supported types: "heatmap", "volcano", "table", "go", 
                    "kegg", "cell_type", "diseases", "pathways", "ontologies", "transcription", 
-                   "l1000", "similar_table", "opposite_table".
+                   "l1000", "similar_table", "opposite_table", "kea_down", "kea_up", "ppi_down", 
+                   "ppi_up", "tfea_down", "tfea_up", "x2k_down", "x2k_up".
                    When provided, artifact will render as chart/table.
         chart_data: Optional JSON string containing chart data. Required when chart_type is provided.
                    Format: JSON string with "data" field containing the chart data structure.
@@ -160,7 +171,7 @@ When using create_artifact, provide:
 - artifact_type: Use "application/vnd.ant.react" for code files, or appropriate MIME type
 
 For charts and tables:
-- Supported chart types: "heatmap", "volcano", "table", "go", "kegg", "cell_type", "diseases", "pathways", "ontologies", "transcription", "l1000", "similar_table", "opposite_table"
+- Supported chart types: "heatmap", "volcano", "table", "go", "kegg", "cell_type", "diseases", "pathways", "ontologies", "transcription", "l1000", "similar_table", "opposite_table", "kea_down", "kea_up", "ppi_down", "ppi_up", "tfea_down", "tfea_up", "x2k_down", "x2k_up"
 - Use chart_type parameter with appropriate value
 - Provide chart_data as JSON string with the data structure
 - For tables (table, similar_table, opposite_table), data structure should have "headers" (array of strings) and "data" (array of arrays)
@@ -187,6 +198,14 @@ Keywords for different chart types:
 - L1000 chart: "tạo l1000 chart", "l1000", "L1000 chart", "create l1000 chart", "L1000 analysis"
 - Similar table: "tạo similar table", "similar table", "create similar table", "bảng similar", "table similar"
 - Opposite table: "tạo opposite table", "opposite table", "create opposite table", "bảng opposite", "table opposite"
+- KEA down: "tạo kea_down chart", "kea_down", "KEA down", "create kea_down chart", "KEA downregulation", "kea downregulation"
+- KEA up: "tạo kea_up chart", "kea_up", "KEA up", "create kea_up chart", "KEA upregulation", "kea upregulation"
+- PPI down: "tạo ppi_down chart", "ppi_down", "PPI down", "create ppi_down chart", "PPI downregulation", "ppi downregulation"
+- PPI up: "tạo ppi_up chart", "ppi_up", "PPI up", "create ppi_up chart", "PPI upregulation", "ppi upregulation"
+- TFEA down: "tạo tfea_down chart", "tfea_down", "TFEA down", "create tfea_down chart", "TFEA downregulation", "tfea downregulation"
+- TFEA up: "tạo tfea_up chart", "tfea_up", "TFEA up", "create tfea_up chart", "TFEA upregulation", "tfea upregulation"
+- X2K down: "tạo x2k_down chart", "x2k_down", "X2K down", "create x2k_down chart", "X2K downregulation", "x2k downregulation"
+- X2K up: "tạo x2k_up chart", "x2k_up", "X2K up", "create x2k_up chart", "X2K upregulation", "x2k upregulation"
 - When user mentions these keywords, use the appropriate chart_type with chart_data"""
 
 agent = create_deep_agent(
