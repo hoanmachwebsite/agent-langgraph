@@ -1,3 +1,4 @@
+import { ArtifactInfo } from "@/types/artifact";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -50,3 +51,50 @@ export const extractContent = (content: any): string | null => {
   }
   return null;
 };
+
+// Helper function to parse artifact from tool message
+export function parseArtifact(content: string): ArtifactInfo | null {
+  try {
+    const parsed = JSON.parse(content);
+    if (
+      parsed.type === "tool_use" &&
+      parsed.name === "artifacts" &&
+      parsed.input
+    ) {
+      const input = parsed.input;
+      if (input.command === "create" && input.id && input.type && input.title) {
+        return {
+          id: input.id,
+          type: input.type,
+          title: input.title,
+          content: input.content || "",
+        };
+      }
+    }
+  } catch {
+    // Not a valid artifact JSON
+  }
+
+  return null;
+}
+
+export function extractContent2(content: unknown): string {
+  if (typeof content === "string") {
+    return content;
+  }
+  if (content === null || content === undefined) {
+    return "";
+  }
+  // Handle array content (e.g., [{ type: "text", text: "..." }])
+  if (Array.isArray(content)) {
+    return content
+      .map((item) => {
+        if (typeof item === "object" && item !== null && "text" in item) {
+          return item.text;
+        }
+        return JSON.stringify(item);
+      })
+      .join("");
+  }
+  return JSON.stringify(content);
+}

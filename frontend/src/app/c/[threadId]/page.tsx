@@ -1,16 +1,14 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useStream } from "@langchain/langgraph-sdk/react";
-import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
+import { StickToBottom } from "use-stick-to-bottom";
 import { Sidebar } from "@/components/Sidebar";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { ArtifactViewer } from "@/components/ArtifactViewer";
 import { useThread } from "@/hooks/use-thread";
-import { useAssistant } from "@/hooks/use-assistant";
-import { useConversation } from "@/hooks/use-conversations";
 import { useInterrupt } from "@/hooks/use-interrupt";
 import {
   Dialog,
@@ -26,130 +24,23 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
-import { AlertTriangle, ArrowDown } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-
-export interface ArtifactInfo {
-  id: string;
-  type: string;
-  title: string;
-  content: string;
-}
-
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp?: Date;
-  artifact?: ArtifactInfo;
-}
-
-// Helper function to extract content from message
-function extractContent(content: unknown): string {
-  if (typeof content === "string") {
-    return content;
-  }
-  if (content === null || content === undefined) {
-    return "";
-  }
-  // Handle array content (e.g., [{ type: "text", text: "..." }])
-  if (Array.isArray(content)) {
-    return content
-      .map((item) => {
-        if (typeof item === "object" && item !== null && "text" in item) {
-          return item.text;
-        }
-        return JSON.stringify(item);
-      })
-      .join("");
-  }
-  return JSON.stringify(content);
-}
-
-// Helper function to parse artifact from tool message
-function parseArtifact(content: string): ArtifactInfo | null {
-  try {
-    const parsed = JSON.parse(content);
-    if (
-      parsed.type === "tool_use" &&
-      parsed.name === "artifacts" &&
-      parsed.input
-    ) {
-      const input = parsed.input;
-      if (input.command === "create" && input.id && input.type && input.title) {
-        return {
-          id: input.id,
-          type: input.type,
-          title: input.title,
-          content: input.content || "",
-        };
-      }
-    }
-  } catch {
-    // Not a valid artifact JSON
-  }
-  return null;
-}
-
-// AutoScroll component that automatically scrolls when messages change
-function AutoScroll({ 
-  messages, 
-  isStreaming 
-}: { 
-  messages: Message[]; 
-  isStreaming: boolean;
-}) {
-  const { scrollToBottom, isAtBottom } = useStickToBottomContext();
-
-  useEffect(() => {
-    // Auto scroll when new messages arrive (only if user is at bottom)
-    if (isAtBottom) {
-      // Use setTimeout to ensure DOM has updated
-      const timeoutId = setTimeout(() => {
-        scrollToBottom();
-      }, 0);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [messages.length, scrollToBottom, isAtBottom]);
-
-  // Also scroll during streaming if user is at bottom
-  useEffect(() => {
-    if (isStreaming && isAtBottom) {
-      const intervalId = setInterval(() => {
-        scrollToBottom();
-      }, 100);
-      return () => clearInterval(intervalId);
-    }
-  }, [isStreaming, isAtBottom, scrollToBottom]);
-
-  return null;
-}
-
-// ScrollToBottom component that shows when user is not at bottom
-function ScrollToBottom() {
-  const { isAtBottom, scrollToBottom } = useStickToBottomContext();
-
-  if (isAtBottom) return null;
-
-  return (
-    <button
-      onClick={() => scrollToBottom()}
-      className="absolute left-1/2 -translate-x-1/2 bottom-4 z-10 bg-primary text-primary-foreground rounded-full p-2.5 shadow-lg hover:bg-primary/90 transition-all hover:scale-110 active:scale-95"
-      aria-label="Scroll to bottom"
-    >
-      <ArrowDown className="w-5 h-5" />
-    </button>
-  );
-}
+import { ArtifactInfo } from "@/types/artifact";
+import { extractContent2, parseArtifact } from "@/lib/utils";
+import { ScrollToBottom } from "@/components/ScrollToBottom";
+import { Message } from "@/types/conversations";
+import { AutoScroll } from "@/components/AutoScroll";
+import { useAssistantContext, useConversationContext } from "@/providers";
 
 export default function ThreadDetail() {
   const params = useParams();
   const router = useRouter();
   const threadId = params?.threadId as string;
 
-  const { assistant } = useAssistant();
+  const { assistant } = useAssistantContext();
   const { dataThread, mutateThread, loadingThread } = useThread(threadId);
-  const { conversations } = useConversation();
+  const { conversations } = useConversationContext();
 
   const [error, setError] = useState<string | null>(null);
   const [selectedArtifact, setSelectedArtifact] = useState<ArtifactInfo | null>(
@@ -200,7 +91,7 @@ export default function ThreadDetail() {
 
         // Handle tool messages with create_artifact
         if (msgObj.type === "tool" && msgObj.name === "create_artifact") {
-          const content = extractContent(msgObj.content);
+          const content = extractContent2(msgObj.content);
           const artifact = parseArtifact(content);
 
           if (artifact) {
@@ -232,7 +123,7 @@ export default function ThreadDetail() {
         // Handle human and AI messages
         if (msgObj.type === "human" || msgObj.type === "ai") {
           const role = msgObj.type === "human" ? "user" : "assistant";
-          const content = extractContent(msgObj.content);
+          const content = extractContent2(msgObj.content);
 
           const message: Message = {
             id: msgObj.id || `stream-${index}`,
@@ -257,7 +148,7 @@ export default function ThreadDetail() {
 
         // Handle tool messages with create_artifact
         if (msgType === "tool" && msgName === "create_artifact") {
-          const content = extractContent(
+          const content = extractContent2(
             (msg as { content?: unknown }).content
           );
           const artifact = parseArtifact(content);
@@ -291,7 +182,7 @@ export default function ThreadDetail() {
         // Handle human and AI messages
         if (msgType === "human" || msgType === "ai") {
           const role = msgType === "human" ? "user" : "assistant";
-          const content = extractContent(
+          const content = extractContent2(
             (msg as { content?: unknown }).content
           );
 
@@ -320,7 +211,7 @@ export default function ThreadDetail() {
     const hasAIMessageWithContent = streamMessages.some((msg: unknown) => {
       const msgObj = msg as { type?: string; content?: unknown };
       if (msgObj.type === "ai") {
-        const content = extractContent(msgObj.content);
+        const content = extractContent2(msgObj.content);
         return content.trim().length > 0;
       }
       return false;
@@ -446,7 +337,7 @@ export default function ThreadDetail() {
 
   const handleRetryAI = (messageIndex: number) => {
     if (isSending) return;
-    
+
     // Find the user message before this AI message
     for (let i = messageIndex - 1; i >= 0; i--) {
       if (messages[i]?.role === "user") {

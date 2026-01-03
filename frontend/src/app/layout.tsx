@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
+import { AssistantProvider, ConversationProvider } from "@/providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ChatGPT Clone",
+  title: "ChatGPT",
   description: "AI Chat Assistant",
 };
 
@@ -29,7 +30,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <AssistantProvider>
+          <ConversationProvider>{children}</ConversationProvider>
+        </AssistantProvider>
         <Toaster />
       </body>
     </html>
