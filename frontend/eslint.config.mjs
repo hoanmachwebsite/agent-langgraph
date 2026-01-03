@@ -12,6 +12,7 @@ const eslintConfig = defineConfig([
       "react-hooks/exhaustive-deps": "off",
       "react-hooks/rules-of-hooks": "off",
       "prefer-const": "off",
+      "react-hooks/purity": "off",
       "@typescript-eslint/ban-ts-comment": [
         "warn",
         {

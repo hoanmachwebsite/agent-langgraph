@@ -196,3 +196,338 @@ export const safeJsonParse = <T = any>(
     return null;
   }
 };
+
+/**
+ * Transform kinases data for visualization
+ */
+export function transformKinasesData(data: any): {
+  bargraphData: any[];
+  tableData: any[];
+  headers: string[];
+} {
+  if (!data) {
+    return { bargraphData: [], tableData: [], headers: [] };
+  }
+
+  try {
+    // Parse JSON string if needed
+    const parsedData = typeof data === "string" ? JSON.parse(data) : data;
+
+    // Handle X2K API format: {headers: [...], data: [...]}
+    if (
+      parsedData.headers &&
+      Array.isArray(parsedData.headers) &&
+      parsedData.data &&
+      Array.isArray(parsedData.data)
+    ) {
+      const headers = parsedData.headers;
+
+      // Find column indexes
+      const regulatorIndex = headers.findIndex(
+        (h: string) => h.toLowerCase() === "regulator"
+      );
+      const pValueIndex = headers.findIndex(
+        (h: string) => h.toLowerCase() === "pvalue"
+      );
+      const minusLog10PValueIndex = headers.findIndex(
+        (h: string) => h.toLowerCase() === "minus_log10_pvalue"
+      );
+      const targetsIndex = headers.findIndex(
+        (h: string) => h.toLowerCase() === "targets"
+      );
+
+      // Transform rows to objects
+      const transformedData = parsedData.data.map((row: any[]) => {
+        const targetsValue = row[targetsIndex] || "";
+        const targetCount =
+          typeof targetsValue === "string" && targetsValue.trim()
+            ? targetsValue.split(",").length
+            : 0;
+
+        return {
+          kinase: row[regulatorIndex] || "N/A",
+          proteinKinase: row[regulatorIndex] || "N/A",
+          regulator: row[regulatorIndex] || "N/A",
+          pValue: parseFloat(row[pValueIndex]) || 0,
+          minusLog10PValue: parseFloat(row[minusLog10PValueIndex]) || 0,
+          targets: targetsValue,
+          targetCount: targetCount,
+          // Legacy compatibility
+          score: parseFloat(row[minusLog10PValueIndex]) || 0,
+        };
+      });
+
+      // Sort by minus_log10_pvalue descending (most significant first)
+      const sortedData = transformedData.sort(
+        (a: any, b: any) => b.minusLog10PValue - a.minusLog10PValue
+      );
+
+      // Return all data - pagination will be handled in components
+      const bargraphData = sortedData;
+
+      return {
+        bargraphData,
+        tableData: transformedData,
+        headers,
+      };
+    }
+
+    // Fallback to legacy format
+    const transformedData = transformApiData(data);
+    if (!transformedData.length) {
+      return { bargraphData: [], tableData: [], headers: [] };
+    }
+
+    const headers =
+      transformedData.length > 0 ? Object.keys(transformedData[0]) : [];
+    const bargraphData = transformedData
+      .sort((a, b) => (b.score || b.pValue || 0) - (a.score || a.pValue || 0))
+      .slice(0, 10);
+
+    return {
+      bargraphData,
+      tableData: transformedData,
+      headers,
+    };
+  } catch (error) {
+    console.error("Error transforming kinases data:", error);
+    return { bargraphData: [], tableData: [], headers: [] };
+  }
+}
+
+/**
+ * Transform network data for D3.js visualization
+ */
+export function transformNetworkData(data: any): {
+  nodes: any[];
+  edges: any[];
+} {
+  if (!data) {
+    return { nodes: [], edges: [] };
+  }
+
+  try {
+    // Parse JSON string if needed
+    const parsedData = typeof data === "string" ? JSON.parse(data) : data;
+
+    // Handle new API format: {nodes: {data: [...]}, edges: {data: [...]}}
+    if (
+      parsedData &&
+      typeof parsedData === "object" &&
+      parsedData.nodes &&
+      parsedData.edges &&
+      parsedData.nodes.data &&
+      Array.isArray(parsedData.nodes.data) &&
+      parsedData.edges.data &&
+      Array.isArray(parsedData.edges.data)
+    ) {
+      // Process nodes from array format [id, label, type, don]
+      const allNodes = parsedData.nodes.data.map((nodeArray: any[]) => ({
+        id: nodeArray[0] || `node-${Math.random()}`,
+        label: nodeArray[1] || nodeArray[0] || "Unknown",
+        type: nodeArray[2] || "protein",
+        don: nodeArray[3] || 0, // degree of nodes for sizing
+      }));
+
+      // Create node lookup for faster edge processing
+      const nodeMap = new Map();
+      allNodes.forEach((node: any) => nodeMap.set(node.id, node));
+
+      // Process edges from array format [sourceId, targetId, type]
+      const processedEdges = parsedData.edges.data
+        .map((edgeArray: any[]) => {
+          const sourceId = edgeArray[0];
+          const targetId = edgeArray[1];
+          const sourceNode = nodeMap.get(sourceId);
+          const targetNode = nodeMap.get(targetId);
+
+          if (sourceNode && targetNode) {
+            return {
+              source: sourceNode,
+              target: targetNode,
+              type: edgeArray[2] || "PPI",
+              weight: 1,
+            };
+          }
+          return null;
+        })
+        .filter((link: any) => link !== null);
+
+      // Filter nodes to only include those that have connections
+      const connectedNodeIds = new Set();
+      processedEdges.forEach((link: any) => {
+        connectedNodeIds.add(link.source.id);
+        connectedNodeIds.add(link.target.id);
+      });
+
+      const connectedNodes = allNodes.filter((node: any) =>
+        connectedNodeIds.has(node.id)
+      );
+
+      return { nodes: connectedNodes, edges: processedEdges };
+    }
+
+    // Handle legacy flat data format
+    const transformedData = transformApiData(data);
+
+    if (!transformedData.length) {
+      return { nodes: [], edges: [] };
+    }
+
+    // Handle existing object format with nodes/edges properties
+    if (
+      transformedData &&
+      typeof transformedData === "object" &&
+      !Array.isArray(transformedData)
+    ) {
+      if ("nodes" in transformedData && "edges" in transformedData) {
+        const networkData = transformedData as { nodes: any[]; edges: any[] };
+        return {
+          nodes: networkData.nodes,
+          edges: networkData.edges,
+        };
+      }
+    }
+
+    // Extract nodes and edges from flat data structure (legacy)
+    const nodes: any[] = [];
+    const edges: any[] = [];
+    const nodeIds = new Set();
+
+    transformedData.forEach((item: any) => {
+      // Add source node
+      if (item.source && !nodeIds.has(item.source)) {
+        nodes.push({
+          id: item.source,
+          label: item.sourceLabel || item.source,
+          type: item.sourceType || "protein",
+          don: item.sourceDon || 0,
+        });
+        nodeIds.add(item.source);
+      }
+
+      // Add target node
+      if (item.target && !nodeIds.has(item.target)) {
+        nodes.push({
+          id: item.target,
+          label: item.targetLabel || item.target,
+          type: item.targetType || "protein",
+          don: item.targetDon || 0,
+        });
+        nodeIds.add(item.target);
+      }
+
+      // Add edge
+      if (item.source && item.target) {
+        edges.push({
+          source: item.source,
+          target: item.target,
+          type: item.edgeType || "PPI",
+          weight: item.weight || 1,
+        });
+      }
+    });
+
+    return { nodes, edges };
+  } catch (error) {
+    console.error("Failed to transform network data:", error);
+    return { nodes: [], edges: [] };
+  }
+}
+
+/**
+ * Transform transcription factors data for visualization
+ */
+export function transformTranscriptionFactorsData(data: any): {
+  bargraphData: any[];
+  tableData: any[];
+  headers: string[];
+} {
+  if (!data) {
+    return { bargraphData: [], tableData: [], headers: [] };
+  }
+
+  try {
+    // Parse JSON string if needed
+    const parsedData = typeof data === "string" ? JSON.parse(data) : data;
+
+    // Handle X2K API format: {headers: [...], data: [...]}
+    if (
+      parsedData.headers &&
+      Array.isArray(parsedData.headers) &&
+      parsedData.data &&
+      Array.isArray(parsedData.data)
+    ) {
+      const headers = parsedData.headers;
+
+      // Find column indexes
+      const regulatorIndex = headers.findIndex(
+        (h: string) => h.toLowerCase() === "regulator"
+      );
+      const pValueIndex = headers.findIndex(
+        (h: string) => h.toLowerCase() === "pvalue"
+      );
+      const minusLog10PValueIndex = headers.findIndex(
+        (h: string) => h.toLowerCase() === "minus_log10_pvalue"
+      );
+      const targetsIndex = headers.findIndex(
+        (h: string) => h.toLowerCase() === "targets"
+      );
+
+      // Transform rows to objects
+      const transformedData = parsedData.data.map((row: any[]) => {
+        const targetsValue = row[targetsIndex] || "";
+        const targetCount =
+          typeof targetsValue === "string" && targetsValue.trim()
+            ? targetsValue.split(",").length
+            : 0;
+
+        return {
+          transcriptionFactor: row[regulatorIndex] || "N/A",
+          regulator: row[regulatorIndex] || "N/A",
+          pValue: parseFloat(row[pValueIndex]) || 0,
+          minusLog10PValue: parseFloat(row[minusLog10PValueIndex]) || 0,
+          targets: targetsValue,
+          targetCount: targetCount,
+          // Legacy compatibility
+          score: parseFloat(row[minusLog10PValueIndex]) || 0,
+        };
+      });
+
+      // Sort by minus_log10_pvalue descending (most significant first)
+      const sortedData = transformedData.sort(
+        (a: any, b: any) => b.minusLog10PValue - a.minusLog10PValue
+      );
+
+      // Return all data - pagination will be handled in components
+      const bargraphData = sortedData;
+
+      return {
+        bargraphData,
+        tableData: transformedData,
+        headers,
+      };
+    }
+
+    // Fallback to legacy format
+    const transformedData = transformApiData(data);
+    if (!transformedData.length) {
+      return { bargraphData: [], tableData: [], headers: [] };
+    }
+
+    const headers =
+      transformedData.length > 0 ? Object.keys(transformedData[0]) : [];
+    const bargraphData = transformedData
+      .sort((a, b) => (b.score || b.pValue || 0) - (a.score || a.pValue || 0))
+      .slice(0, 10);
+
+    return {
+      bargraphData,
+      tableData: transformedData,
+      headers,
+    };
+  } catch (error) {
+    console.error("Error transforming transcription factors data:", error);
+    return { bargraphData: [], tableData: [], headers: [] };
+  }
+}

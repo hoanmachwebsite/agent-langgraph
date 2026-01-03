@@ -39,7 +39,7 @@ export default function ThreadDetail() {
   const threadId = params?.threadId as string;
 
   const { assistant } = useAssistantContext();
-  const { dataThread, mutateThread, loadingThread } = useThread(threadId);
+  const { dataThread, loadingThread } = useThread(threadId);
   const { conversations } = useConversationContext();
 
   const [error, setError] = useState<string | null>(null);
@@ -315,11 +315,6 @@ export default function ThreadDetail() {
       await submit({
         messages: [{ role: "user", content: content.trim() }],
       });
-
-      // Refresh thread details after sending
-      setTimeout(() => {
-        mutateThread();
-      }, 1000);
     } catch (err) {
       setError(
         err instanceof Error

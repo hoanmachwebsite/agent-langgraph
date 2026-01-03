@@ -106,3 +106,8 @@ export enum L1000TabEnum {
   MOST_SIMILAR = "most_similar",
   MOST_OPPOSITE = "most_opposite",
 }
+
+export enum X2KChartTypeEnum {
+  BARGRAPH = "bargraph",
+  TABLE = "table",
+}

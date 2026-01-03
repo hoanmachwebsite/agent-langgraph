@@ -8,9 +8,14 @@ import {
   HeatMapSetting,
   L1000TabEnum,
   LegendVolcanoChartItem,
+  X2KChartTypeEnum,
 } from "@/types/chart";
 import { VolcanoPlotChart } from "./volcano-plot-chart";
 import GeneHeatmap from "./gene-heatmap";
+import { EnrichmentChart } from "./enrichment-chart";
+import { X2KProteinNetworkChart } from "./x2k-protein-network-chart";
+import { X2KKinasesChart } from "./x2k-kinases-chart";
+import { X2KTranscriptionFactorsChart } from "./x2k-transcription-factors-chart";
 
 interface ChartRendererProps {
   chartType: string;
@@ -25,10 +30,14 @@ export function ChartRenderer({
   isLoading,
   error,
 }: ChartRendererProps) {
-  // L1000 ref
+  // Ref
   const l1000Ref = useRef<HTMLDivElement>(null);
   const mostSimilarRef = useRef<HTMLDivElement>(null);
   const mostOppositeRef = useRef<HTMLDivElement>(null);
+  const enrichRef = useRef<HTMLDivElement>(null);
+
+  const x2kProteinRef = useRef<HTMLDivElement>(null);
+  const x2kKeaRef = useRef<HTMLDivElement>(null);
 
   // Volcanon
   const [legendItems, setLegendItems] = useState<LegendVolcanoChartItem[]>(
@@ -95,6 +104,10 @@ export function ChartRenderer({
       },
     };
   });
+
+  // X2k
+  const [proteinNetworkPinnedNodeIds, setProteinNetworkPinnedNodeIds] =
+    useState<Set<string>>(new Set());
 
   const handleHeatMap = (minValue: number, maxValue: number) => {
     console.log("Heatmap range changed:", { min: minValue, max: maxValue });
@@ -213,7 +226,7 @@ export function ChartRenderer({
     return <TableChart data={parsedData} />;
   }
 
-  // Enrichment chart types: go, kegg, ontologies, pathways, diseases, cell_type
+  // Enrichment chart types: go, kegg, ontologies, pathways, diseases, cell_type, transcription
   const enrichmentTypes = [
     "go",
     "kegg",
@@ -221,10 +234,54 @@ export function ChartRenderer({
     "pathways",
     "diseases",
     "cell_type",
+    "transcription",
   ];
 
   if (enrichmentTypes.includes(chartType)) {
-    return <EnrichmentChart data={parsedData} chartType={chartType} />;
+    return <EnrichmentChart ref={enrichRef} data={data} width={1000} />;
+  }
+
+  const ppiX2kTypes = ["ppi_down", "ppi_up"];
+
+  if (ppiX2kTypes.includes(chartType)) {
+    return (
+      <X2KProteinNetworkChart
+        networkData={data}
+        // @ts-ignore
+        refChart={x2kProteinRef}
+        isLoading={isLoading}
+        pinnedNodeIds={proteinNetworkPinnedNodeIds}
+        onPinnedNodeIdsChange={setProteinNetworkPinnedNodeIds}
+      />
+    );
+  }
+
+  const keaX2kTypes = ["kea_down", "kea_up"];
+
+  if (keaX2kTypes.includes(chartType)) {
+    return (
+      <X2KKinasesChart
+        data={data}
+        chartType={X2KChartTypeEnum.BARGRAPH}
+        // @ts-ignore
+        refChart={x2kKeaRef}
+        isLoading={isLoading}
+      />
+    );
+  }
+
+  const transacriptionX2kTypes = ["tfea_down", "tfea_up"];
+
+  if (transacriptionX2kTypes.includes(chartType)) {
+    return (
+      <X2KTranscriptionFactorsChart
+        data={data}
+        chartType={X2KChartTypeEnum.TABLE}
+        // @ts-ignore
+        refChart={x2kKeaRef}
+        isLoading={isLoading}
+      />
+    );
   }
 
   // Other chart types: heatmap, pca, l1000, kea_down, kea_up, ppi_down, ppi_up, tfea_down, tfea_up, x2k_down, x2k_up
@@ -293,134 +350,6 @@ function TableChart({ data }: { data: any }) {
           </tbody>
         </table>
       </div>
-    </div>
-  );
-}
-
-// Enrichment Chart Component (GO, KEGG, etc.)
-function EnrichmentChart({
-  data,
-  chartType,
-}: {
-  data: any;
-  chartType: string;
-}) {
-  const dotplot = data.dotplot || {};
-  const barplot = data.barplot || {};
-  const metadata = data.metadata || {};
-
-  return (
-    <div className="h-full overflow-auto p-4 space-y-4">
-      {metadata && Object.keys(metadata).length > 0 && (
-        <div className="p-3 bg-muted/50 rounded-lg">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-            {Object.entries(metadata).map(([key, value]) => (
-              <div key={key}>
-                <span className="font-medium">{key}:</span>{" "}
-                <span className="text-muted-foreground">
-                  {Array.isArray(value) ? value.join(", ") : String(value)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {dotplot.headers && dotplot.data && (
-        <div>
-          <h3 className="text-sm font-semibold mb-2">Dot Plot</h3>
-          <div className="overflow-x-auto border rounded-lg">
-            <table className="w-full text-sm">
-              <thead className="bg-muted">
-                <tr>
-                  {dotplot.headers.map((header: string, index: number) => (
-                    <th
-                      key={index}
-                      className="px-4 py-2 text-left font-medium border-b"
-                    >
-                      {header}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {dotplot.data.slice(0, 20).map((row: any, rowIndex: number) => (
-                  <tr
-                    key={rowIndex}
-                    className="border-b hover:bg-muted/50 transition-colors"
-                  >
-                    {dotplot.headers.map(
-                      (header: string, headerIndex: number) => (
-                        <td
-                          key={headerIndex}
-                          className="px-4 py-2 border-r last:border-r-0"
-                        >
-                          {typeof row[header] === "object"
-                            ? JSON.stringify(row[header])
-                            : String(row[header] || row[headerIndex] || "")}
-                        </td>
-                      )
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {dotplot.data.length > 20 && (
-              <div className="px-4 py-2 text-xs text-muted-foreground text-center border-t">
-                Showing 20 of {dotplot.data.length} rows
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {barplot.headers && barplot.data && (
-        <div>
-          <h3 className="text-sm font-semibold mb-2">Bar Plot</h3>
-          <div className="overflow-x-auto border rounded-lg">
-            <table className="w-full text-sm">
-              <thead className="bg-muted">
-                <tr>
-                  {barplot.headers.map((header: string, index: number) => (
-                    <th
-                      key={index}
-                      className="px-4 py-2 text-left font-medium border-b"
-                    >
-                      {header}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {barplot.data.slice(0, 20).map((row: any, rowIndex: number) => (
-                  <tr
-                    key={rowIndex}
-                    className="border-b hover:bg-muted/50 transition-colors"
-                  >
-                    {barplot.headers.map(
-                      (header: string, headerIndex: number) => (
-                        <td
-                          key={headerIndex}
-                          className="px-4 py-2 border-r last:border-r-0"
-                        >
-                          {typeof row[header] === "object"
-                            ? JSON.stringify(row[header])
-                            : String(row[header] || row[headerIndex] || "")}
-                        </td>
-                      )
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {barplot.data.length > 20 && (
-              <div className="px-4 py-2 text-xs text-muted-foreground text-center border-t">
-                Showing 20 of {barplot.data.length} rows
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
