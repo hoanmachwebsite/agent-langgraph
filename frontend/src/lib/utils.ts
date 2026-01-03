@@ -98,3 +98,101 @@ export function extractContent2(content: unknown): string {
   }
   return JSON.stringify(content);
 }
+
+export const formatNumber = (num: number) => {
+  const MAX_DECIMAL_PLACES = 4;
+
+  if (num === 0) return "0";
+
+  if (String(num).includes("e")) {
+    return num.toExponential(MAX_DECIMAL_PLACES);
+  }
+
+  const absNum = Math.abs(num);
+
+  if (absNum < 0.0001) {
+    return num.toExponential(MAX_DECIMAL_PLACES);
+  }
+
+  if (Number.isInteger(num)) {
+    return num.toString();
+  }
+
+  const numStr = absNum.toString();
+  const decimalPart = numStr.includes(".") ? numStr.split(".")[1] : "";
+
+  if (decimalPart && decimalPart.length > MAX_DECIMAL_PLACES) {
+    return parseFloat(num.toFixed(MAX_DECIMAL_PLACES)).toString();
+  }
+
+  let leadingZeros = 0;
+  for (let i = 0; i < (decimalPart?.length ?? 0); i++) {
+    if (decimalPart?.[i] === "0") {
+      leadingZeros++;
+    } else {
+      break;
+    }
+  }
+
+  const precision = Math.min(leadingZeros + 4, MAX_DECIMAL_PLACES);
+  const fixed = num.toFixed(precision);
+
+  return parseFloat(fixed).toString();
+};
+
+export const formatGeneCountValue = (value: any) => {
+  if (
+    value === null ||
+    value === undefined ||
+    value === "" ||
+    typeof value === "boolean"
+  ) {
+    return value;
+  }
+
+  const num = Number(value);
+
+  if (!isNaN(num)) {
+    return formatNumber(num);
+  }
+
+  return value;
+};
+
+export const transformApiData = (dataBasic: any): Record<string, any>[] => {
+  if (dataBasic === "") return [];
+  let apiData = JSON.parse(dataBasic);
+  if (!apiData || !apiData.headers || !apiData.data) {
+    return [];
+  }
+
+  const headers = apiData.headers;
+
+  return apiData.data.map((row: any[]) => {
+    const item: Record<string, any> = {};
+    headers.forEach((header: any, index: number) => {
+      item[header] = row[index];
+    });
+    return item;
+  });
+};
+
+export const convertToTitleCase = (input: string): string => {
+  return input
+    .toLowerCase()
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
+export const safeJsonParse = <T = any>(
+  jsonString: string | null | undefined
+): T | null => {
+  try {
+    if (!jsonString) return null;
+    return JSON.parse(jsonString) as T;
+  } catch (error) {
+    console.error("JSON parse error:", error);
+    return null;
+  }
+};

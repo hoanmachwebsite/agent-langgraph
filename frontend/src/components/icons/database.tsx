@@ -1,0 +1,33 @@
+import React from 'react';
+
+export const databaseIcon: React.FC<React.SVGProps<SVGSVGElement>> = (
+  props
+) => (
+  <svg
+    width='32'
+    height='32'
+    viewBox='0 0 32 32'
+    fill='none'
+    xmlns='http://www.w3.org/2000/svg'
+    {...props}
+  >
+    <path
+      d='M16 10.667C22.6274 10.667 28 8.87613 28 6.66699C28 4.45785 22.6274 2.66699 16 2.66699C9.37258 2.66699 4 4.45785 4 6.66699C4 8.87613 9.37258 10.667 16 10.667Z'
+      stroke='currentColor'
+      strokeLinecap='round'
+      strokeLinejoin='round'
+    />
+    <path
+      d='M28 16C28 18.2133 22.6667 20 16 20C9.33333 20 4 18.2133 4 16'
+      stroke='currentColor'
+      strokeLinecap='round'
+      strokeLinejoin='round'
+    />
+    <path
+      d='M4 6.66699V25.3337C4 27.547 9.33333 29.3337 16 29.3337C22.6667 29.3337 28 27.547 28 25.3337V6.66699'
+      stroke='currentColor'
+      strokeLinecap='round'
+      strokeLinejoin='round'
+    />
+  </svg>
+);

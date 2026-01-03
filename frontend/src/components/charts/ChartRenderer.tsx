@@ -1,6 +1,16 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
+import L1000Chart from "./l1000";
+import { safeJsonParse, transformApiData } from "@/lib/utils";
+import { DrugSigtureTable } from "./drug-signature-table";
+import {
+  HeatMapSetting,
+  L1000TabEnum,
+  LegendVolcanoChartItem,
+} from "@/types/chart";
+import { VolcanoPlotChart } from "./volcano-plot-chart";
+import GeneHeatmap from "./gene-heatmap";
 
 interface ChartRendererProps {
   chartType: string;
@@ -15,6 +25,85 @@ export function ChartRenderer({
   isLoading,
   error,
 }: ChartRendererProps) {
+  // L1000 ref
+  const l1000Ref = useRef<HTMLDivElement>(null);
+  const mostSimilarRef = useRef<HTMLDivElement>(null);
+  const mostOppositeRef = useRef<HTMLDivElement>(null);
+
+  // Volcanon
+  const [legendItems, setLegendItems] = useState<LegendVolcanoChartItem[]>(
+    () => [
+      {
+        id: "NS",
+        name: "NS",
+        color: "#F97316", // Orange
+        visible: true,
+      },
+      {
+        id: "log2FC",
+        name: "Log₂ FC",
+        color: "#22C55E", // Green
+        visible: true,
+      },
+      {
+        id: "padj",
+        name: "p-adj",
+        color: "#3B82F6", // Blue
+        visible: true,
+      },
+      {
+        id: "padj_and_log2FC",
+        name: "p-adj and Log₂ FC",
+        color: "#EAB308", // Yellow
+        visible: true,
+      },
+    ]
+  );
+
+  const [showLabel, setShowLabel] = useState(true);
+
+  const updateShowLabel = (show: boolean) => {
+    setShowLabel(show);
+  };
+
+  const updateLegendItemVisibility = (itemId: string, visible: boolean) => {
+    setLegendItems((prev) =>
+      prev.map((item) => (item.id === itemId ? { ...item, visible } : item))
+    );
+  };
+
+  // Heatmap
+  const [setting] = useState<HeatMapSetting>(() => {
+    return {
+      clone: false,
+      createdAt: new Date().toISOString(),
+      highColor: "#EAB308", // Yellow
+      id: "default",
+      label: "Default Heatmap",
+      lowColor: "#3B82F6", // Blue
+      pipelineId: "mock",
+      sampleSetId: "mock",
+      updatedAt: new Date().toISOString(),
+      additionalAnnotations: [],
+      genes: {
+        excluded: null,
+        included: null,
+      },
+      samples: {
+        excluded: null,
+        included: null,
+      },
+    };
+  });
+
+  const handleHeatMap = (minValue: number, maxValue: number) => {
+    console.log("Heatmap range changed:", { min: minValue, max: maxValue });
+  };
+
+  const dataParse = useMemo(() => {
+    return safeJsonParse(data);
+  }, [data]);
+
   // Parse JSON string to object
   const parsedData = useMemo(() => {
     if (!data) return null;
@@ -54,13 +143,71 @@ export function ChartRenderer({
     );
   }
 
+  // Volcano chart
+  if (chartType === "volcano") {
+    return (
+      <VolcanoPlotChart
+        data={data ?? ""}
+        legendItems={legendItems}
+        updateLegendItemVisibility={updateLegendItemVisibility}
+        showLabel={showLabel}
+        updateShowLabel={updateShowLabel}
+      />
+    );
+  }
+
+  // Heatmap
+  if (chartType === "heatmap") {
+    return (
+      <GeneHeatmap
+        dataHeatMap={dataParse}
+        handleHeatMap={handleHeatMap}
+        setting={setting}
+      />
+    );
+  }
+
+  const L1000Data = transformApiData(data ?? "");
+
+  // l1000 Chart
+  if (chartType === "l1000") {
+    return (
+      <div>
+        <L1000Chart allData={L1000Data} refChart={l1000Ref} />
+      </div>
+    );
+  }
+
+  // l1000 similar table
+  if (chartType === "similar_table") {
+    return (
+      <DrugSigtureTable
+        refTable={mostSimilarRef}
+        headItems={dataParse?.headers ?? []}
+        data={dataParse?.data ?? []}
+        isLoadingMostData={isLoading}
+        tableType={L1000TabEnum.MOST_SIMILAR}
+        classColorBox="bg-[#83CB19]"
+      />
+    );
+  }
+
+  // l1000 opposite table
+  if (chartType === "opposite_table") {
+    return (
+      <DrugSigtureTable
+        refTable={mostOppositeRef}
+        headItems={dataParse?.headers ?? []}
+        data={dataParse?.data ?? []}
+        isLoadingMostData={isLoading}
+        tableType={L1000TabEnum.MOST_OPPOSITE}
+        classColorBox="bg-[#E94549]"
+      />
+    );
+  }
+
   // Table types: gene_table, similar_table, opposite_table
-  const tableTypes = [
-    "gene_table",
-    "similar_table",
-    "opposite_table",
-    "transcription",
-  ];
+  const tableTypes = ["gene_table", "transcription"];
 
   if (tableTypes.includes(chartType)) {
     return <TableChart data={parsedData} />;
@@ -105,9 +252,7 @@ function TableChart({ data }: { data: any }) {
             {Object.entries(metadata).map(([key, value]) => (
               <div key={key}>
                 <span className="font-medium">{key}:</span>{" "}
-                <span className="text-muted-foreground">
-                  {String(value)}
-                </span>
+                <span className="text-muted-foreground">{String(value)}</span>
               </div>
             ))}
           </div>
@@ -134,8 +279,13 @@ function TableChart({ data }: { data: any }) {
                 className="border-b hover:bg-muted/50 transition-colors"
               >
                 {row.map((cell: any, cellIndex: number) => (
-                  <td key={cellIndex} className="px-4 py-2 border-r last:border-r-0">
-                    {typeof cell === "object" ? JSON.stringify(cell) : String(cell)}
+                  <td
+                    key={cellIndex}
+                    className="px-4 py-2 border-r last:border-r-0"
+                  >
+                    {typeof cell === "object"
+                      ? JSON.stringify(cell)
+                      : String(cell)}
                   </td>
                 ))}
               </tr>
@@ -148,7 +298,13 @@ function TableChart({ data }: { data: any }) {
 }
 
 // Enrichment Chart Component (GO, KEGG, etc.)
-function EnrichmentChart({ data, chartType }: { data: any; chartType: string }) {
+function EnrichmentChart({
+  data,
+  chartType,
+}: {
+  data: any;
+  chartType: string;
+}) {
   const dotplot = data.dotplot || {};
   const barplot = data.barplot || {};
   const metadata = data.metadata || {};
@@ -193,16 +349,18 @@ function EnrichmentChart({ data, chartType }: { data: any; chartType: string }) 
                     key={rowIndex}
                     className="border-b hover:bg-muted/50 transition-colors"
                   >
-                    {dotplot.headers.map((header: string, headerIndex: number) => (
-                      <td
-                        key={headerIndex}
-                        className="px-4 py-2 border-r last:border-r-0"
-                      >
-                        {typeof row[header] === "object"
-                          ? JSON.stringify(row[header])
-                          : String(row[header] || row[headerIndex] || "")}
-                      </td>
-                    ))}
+                    {dotplot.headers.map(
+                      (header: string, headerIndex: number) => (
+                        <td
+                          key={headerIndex}
+                          className="px-4 py-2 border-r last:border-r-0"
+                        >
+                          {typeof row[header] === "object"
+                            ? JSON.stringify(row[header])
+                            : String(row[header] || row[headerIndex] || "")}
+                        </td>
+                      )
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -239,16 +397,18 @@ function EnrichmentChart({ data, chartType }: { data: any; chartType: string }) 
                     key={rowIndex}
                     className="border-b hover:bg-muted/50 transition-colors"
                   >
-                    {barplot.headers.map((header: string, headerIndex: number) => (
-                      <td
-                        key={headerIndex}
-                        className="px-4 py-2 border-r last:border-r-0"
-                      >
-                        {typeof row[header] === "object"
-                          ? JSON.stringify(row[header])
-                          : String(row[header] || row[headerIndex] || "")}
-                      </td>
-                    ))}
+                    {barplot.headers.map(
+                      (header: string, headerIndex: number) => (
+                        <td
+                          key={headerIndex}
+                          className="px-4 py-2 border-r last:border-r-0"
+                        >
+                          {typeof row[header] === "object"
+                            ? JSON.stringify(row[header])
+                            : String(row[header] || row[headerIndex] || "")}
+                        </td>
+                      )
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -264,4 +424,3 @@ function EnrichmentChart({ data, chartType }: { data: any; chartType: string }) 
     </div>
   );
 }
-

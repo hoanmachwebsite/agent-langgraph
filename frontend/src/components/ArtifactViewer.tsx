@@ -1,6 +1,6 @@
 "use client";
 
-import { ArtifactInfo } from "@/app/c/[threadId]/page";
+import { ArtifactInfo } from "@/types/artifact";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -62,27 +62,15 @@ export function ArtifactViewer({ artifact, onClose }: ArtifactViewerProps) {
       {/* Tabs */}
       <div className="flex-1 overflow-hidden flex flex-col min-h-0">
         <Tabs
-          defaultValue="output"
+          defaultValue="visual"
           className="flex-1 flex flex-col overflow-hidden min-h-0"
         >
           <div className="px-4 pt-3 shrink-0">
             <TabsList>
-              <TabsTrigger value="output">Output</TabsTrigger>
               <TabsTrigger value="visual">Visual</TabsTrigger>
+              <TabsTrigger value="output">Output</TabsTrigger>
             </TabsList>
           </div>
-
-          <TabsContent
-            value="output"
-            className="flex-1 overflow-auto mt-0 px-4 py-4 min-h-0"
-          >
-            <div className="space-y-2">
-              <pre className="bg-muted/50 p-4 rounded-lg text-xs overflow-x-auto font-mono whitespace-pre-wrap">
-                {artifact.content || "No content available"}
-              </pre>
-            </div>
-          </TabsContent>
-
           <TabsContent
             value="visual"
             className="flex-1 overflow-hidden mt-0 px-4 py-4 min-h-0"
@@ -101,6 +89,17 @@ export function ArtifactViewer({ artifact, onClose }: ArtifactViewerProps) {
                 </p>
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent
+            value="output"
+            className="flex-1 overflow-auto mt-0 px-4 py-4 min-h-0"
+          >
+            <div className="space-y-2">
+              <pre className="bg-muted/50 p-4 rounded-lg text-xs overflow-x-auto font-mono whitespace-pre-wrap">
+                {artifact.content || "No content available"}
+              </pre>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

@@ -1,0 +1,47 @@
+import React from 'react';
+
+export const closeIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg
+    width='16'
+    height='16'
+    viewBox='0 0 16 16'
+    fill='none'
+    xmlns='http://www.w3.org/2000/svg'
+    {...props}
+  >
+    <path
+      d='M12 4L4 12'
+      stroke='currentColor'
+      strokeWidth='2'
+      strokeLinecap='round'
+      strokeLinejoin='round'
+    />
+    <path
+      d='M4 4L12 12'
+      stroke='currentColor'
+      strokeWidth='2'
+      strokeLinecap='round'
+      strokeLinejoin='round'
+    />
+  </svg>
+);
+
+export const close2Icon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg
+    width='24'
+    height='24'
+    viewBox='0 0 24 24'
+    fill='none'
+    xmlns='http://www.w3.org/2000/svg'
+    {...props}
+  >
+    <path
+      d='M17.2929 5.29289C17.6834 4.90237 18.3164 4.90237 18.707 5.29289C19.0975 5.68342 19.0975 6.31643 18.707 6.70696L6.70696 18.707C6.31643 19.0975 5.68342 19.0975 5.29289 18.707C4.90237 18.3164 4.90237 17.6834 5.29289 17.2929L17.2929 5.29289Z'
+      fill='currentColor'
+    />
+    <path
+      d='M5.29289 5.29289C5.68342 4.90237 6.31643 4.90237 6.70696 5.29289L18.707 17.2929C19.0975 17.6834 19.0975 18.3164 18.707 18.707C18.3164 19.0975 17.6834 19.0975 17.2929 18.707L5.29289 6.70696C4.90237 6.31643 4.90237 5.68342 5.29289 5.29289Z'
+      fill='currentColor'
+    />
+  </svg>
+);

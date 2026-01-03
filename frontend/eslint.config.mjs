@@ -11,6 +11,15 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-explicit-any": "off",
       "react-hooks/exhaustive-deps": "off",
       "react-hooks/rules-of-hooks": "off",
+      "prefer-const": "off",
+      "@typescript-eslint/ban-ts-comment": [
+        "warn",
+        {
+          "ts-ignore": false,
+          "ts-expect-error": "allow-with-description",
+        },
+      ],
+      "@typescript-eslint/no-unsafe-function-type": "off",
     },
   },
   globalIgnores([
