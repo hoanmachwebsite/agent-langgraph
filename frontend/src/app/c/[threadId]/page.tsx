@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useStream } from "@langchain/langgraph-sdk/react";
+import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 import { Sidebar } from "@/components/Sidebar";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
@@ -25,7 +26,7 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 
 export interface ArtifactInfo {
@@ -90,6 +91,57 @@ function parseArtifact(content: string): ArtifactInfo | null {
   return null;
 }
 
+// AutoScroll component that automatically scrolls when messages change
+function AutoScroll({ 
+  messages, 
+  isStreaming 
+}: { 
+  messages: Message[]; 
+  isStreaming: boolean;
+}) {
+  const { scrollToBottom, isAtBottom } = useStickToBottomContext();
+
+  useEffect(() => {
+    // Auto scroll when new messages arrive (only if user is at bottom)
+    if (isAtBottom) {
+      // Use setTimeout to ensure DOM has updated
+      const timeoutId = setTimeout(() => {
+        scrollToBottom();
+      }, 0);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [messages.length, scrollToBottom, isAtBottom]);
+
+  // Also scroll during streaming if user is at bottom
+  useEffect(() => {
+    if (isStreaming && isAtBottom) {
+      const intervalId = setInterval(() => {
+        scrollToBottom();
+      }, 100);
+      return () => clearInterval(intervalId);
+    }
+  }, [isStreaming, isAtBottom, scrollToBottom]);
+
+  return null;
+}
+
+// ScrollToBottom component that shows when user is not at bottom
+function ScrollToBottom() {
+  const { isAtBottom, scrollToBottom } = useStickToBottomContext();
+
+  if (isAtBottom) return null;
+
+  return (
+    <button
+      onClick={() => scrollToBottom()}
+      className="absolute left-1/2 -translate-x-1/2 bottom-4 z-10 bg-primary text-primary-foreground rounded-full p-2.5 shadow-lg hover:bg-primary/90 transition-all hover:scale-110 active:scale-95"
+      aria-label="Scroll to bottom"
+    >
+      <ArrowDown className="w-5 h-5" />
+    </button>
+  );
+}
+
 export default function ThreadDetail() {
   const params = useParams();
   const router = useRouter();
@@ -103,7 +155,6 @@ export default function ThreadDetail() {
   const [selectedArtifact, setSelectedArtifact] = useState<ArtifactInfo | null>(
     null
   );
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Use useStream hook from LangGraph SDK
   const {
@@ -293,11 +344,6 @@ export default function ThreadDetail() {
     setSelectedArtifact(null);
   };
 
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
   const handleInterruptDecision = async (
     decision: "approve" | "reject" | "edit"
   ) => {
@@ -389,6 +435,27 @@ export default function ThreadDetail() {
           ? err.message
           : "Failed to send message. Please try again."
       );
+    }
+  };
+
+  const handleRetry = (messageContent: string) => {
+    if (messageContent.trim() && !isSending) {
+      handleSendMessage(messageContent);
+    }
+  };
+
+  const handleRetryAI = (messageIndex: number) => {
+    if (isSending) return;
+    
+    // Find the user message before this AI message
+    for (let i = messageIndex - 1; i >= 0; i--) {
+      if (messages[i]?.role === "user") {
+        const userMessageContent = messages[i].content;
+        if (userMessageContent.trim()) {
+          handleSendMessage(userMessageContent);
+        }
+        break;
+      }
     }
   };
 
@@ -486,39 +553,51 @@ export default function ThreadDetail() {
               ) : (
                 <>
                   {/* Chat Messages Area */}
-                  <div className="flex-1 overflow-y-auto overscroll-contain scroll-smooth">
-                    <div className="max-w-5xl mx-auto w-full">
-                      {messages.map((message) => {
-                        if (message.content === "" && !message.artifact)
-                          return null;
-                        return (
-                          <ChatMessage
-                            key={message.id}
-                            role={message.role}
-                            content={message.content}
-                            artifact={message.artifact}
-                            onArtifactClick={handleArtifactClick}
-                          />
-                        );
-                      })}
-                      {(loadingThread ||
-                        (isSending && !isStreamingWithContent)) && (
-                        <div className="flex gap-4 px-4 py-6">
-                          <div className="w-8 h-8 rounded-full bg-secondary shrink-0 flex items-center justify-center">
-                            <span className="text-sm text-secondary-foreground">
-                              AI
-                            </span>
+                  <StickToBottom
+                    className="flex-1 relative overflow-hidden min-h-0"
+                    resize="smooth"
+                    initial="smooth"
+                  >
+                    <StickToBottom.Content className="flex flex-col py-4">
+                      <AutoScroll messages={messages} isStreaming={isSending} />
+                      <div className="max-w-5xl mx-auto w-full">
+                        {messages.map((message, index) => {
+                          if (message.content === "" && !message.artifact)
+                            return null;
+                          return (
+                            <ChatMessage
+                              key={message.id}
+                              role={message.role}
+                              content={message.content}
+                              artifact={message.artifact}
+                              onArtifactClick={handleArtifactClick}
+                              onRetry={
+                                message.role === "user"
+                                  ? () => handleRetry(message.content)
+                                  : () => handleRetryAI(index)
+                              }
+                            />
+                          );
+                        })}
+                        {(loadingThread ||
+                          (isSending && !isStreamingWithContent)) && (
+                          <div className="flex gap-4 px-4 py-6">
+                            <div className="w-8 h-8 rounded-full bg-secondary shrink-0 flex items-center justify-center">
+                              <span className="text-sm text-secondary-foreground">
+                                AI
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 pt-1">
+                              <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                              <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                              <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1.5 pt-1">
-                            <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                            <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                            <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
-                          </div>
-                        </div>
-                      )}
-                      <div ref={messagesEndRef} />
-                    </div>
-                  </div>
+                        )}
+                      </div>
+                    </StickToBottom.Content>
+                    <ScrollToBottom />
+                  </StickToBottom>
 
                   {/* Chat Input - Fixed at bottom */}
                   <div className="sticky bottom-0 bg-background">
@@ -580,39 +659,51 @@ export default function ThreadDetail() {
           ) : (
             <>
               {/* Chat Messages Area */}
-              <div className="flex-1 overflow-y-auto overscroll-contain scroll-smooth">
-                <div className="max-w-5xl mx-auto w-full">
-                  {messages.map((message) => {
-                    if (message.content === "" && !message.artifact)
-                      return null;
-                    return (
-                      <ChatMessage
-                        key={message.id}
-                        role={message.role}
-                        content={message.content}
-                        artifact={message.artifact}
-                        onArtifactClick={handleArtifactClick}
-                      />
-                    );
-                  })}
-                  {(loadingThread ||
-                    (isSending && !isStreamingWithContent)) && (
-                    <div className="flex gap-4 px-4 py-6">
-                      <div className="w-8 h-8 rounded-full bg-secondary shrink-0 flex items-center justify-center">
-                        <span className="text-sm text-secondary-foreground">
-                          AI
-                        </span>
+              <StickToBottom
+                className="flex-1 relative overflow-hidden min-h-0"
+                resize="smooth"
+                initial="smooth"
+              >
+                <StickToBottom.Content className="flex flex-col py-4">
+                  <AutoScroll messages={messages} isStreaming={isSending} />
+                  <div className="max-w-5xl mx-auto w-full">
+                    {messages.map((message, index) => {
+                      if (message.content === "" && !message.artifact)
+                        return null;
+                      return (
+                        <ChatMessage
+                          key={message.id}
+                          role={message.role}
+                          content={message.content}
+                          artifact={message.artifact}
+                          onArtifactClick={handleArtifactClick}
+                          onRetry={
+                            message.role === "user"
+                              ? () => handleRetry(message.content)
+                              : () => handleRetryAI(index)
+                          }
+                        />
+                      );
+                    })}
+                    {(loadingThread ||
+                      (isSending && !isStreamingWithContent)) && (
+                      <div className="flex gap-4 px-4 py-6">
+                        <div className="w-8 h-8 rounded-full bg-secondary shrink-0 flex items-center justify-center">
+                          <span className="text-sm text-secondary-foreground">
+                            AI
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 pt-1">
+                          <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                          <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                          <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1.5 pt-1">
-                        <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                        <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                        <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
-                      </div>
-                    </div>
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
-              </div>
+                    )}
+                  </div>
+                </StickToBottom.Content>
+                <ScrollToBottom />
+              </StickToBottom>
 
               {/* Chat Input - Fixed at bottom */}
               <div className="sticky bottom-0 bg-background">

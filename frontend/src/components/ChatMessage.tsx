@@ -1,10 +1,12 @@
 "use client";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
-import { FileText, ExternalLink } from "lucide-react";
+import { FileText, ExternalLink, Copy, Check, RotateCcw } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 interface ArtifactInfo {
   id: string;
@@ -18,11 +20,19 @@ interface ChatMessageProps {
   content: string;
   artifact?: ArtifactInfo;
   onArtifactClick?: (artifact: ArtifactInfo) => void;
+  onRetry?: () => void;
 }
 
-export function ChatMessage({ role, content, artifact, onArtifactClick }: ChatMessageProps) {
+export function ChatMessage({
+  role,
+  content,
+  artifact,
+  onArtifactClick,
+  onRetry,
+}: ChatMessageProps) {
   const isUser = role === "user";
   const [isArtifactExpanded, setIsArtifactExpanded] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   const handleArtifactClick = () => {
     if (artifact) {
@@ -33,7 +43,7 @@ export function ChatMessage({ role, content, artifact, onArtifactClick }: ChatMe
         const chartType = artifact.type.includes("/")
           ? artifact.type.split("/")[1]
           : artifact.type.replace("chart/", "");
-        
+
         const artifactUrl = `/api/charts/${chartType}?id=${artifact.id}`;
         window.open(artifactUrl, "_blank");
       }
@@ -45,6 +55,18 @@ export function ChatMessage({ role, content, artifact, onArtifactClick }: ChatMe
       return type.split("/")[1];
     }
     return type.replace("chart/", "");
+  };
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(content);
+      setIsCopied(true);
+      toast.success("Đã sao chép vào clipboard");
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch {
+      toast.error("Không thể sao chép");
+    }
   };
 
   return (
@@ -69,16 +91,70 @@ export function ChatMessage({ role, content, artifact, onArtifactClick }: ChatMe
       </Avatar>
       <div className="flex-1 min-w-0">
         {isUser ? (
-          <div className="flex justify-end">
-            <p className="text-foreground whitespace-pre-wrap wrap-break-word leading-relaxed text-right max-w-[80%]">
+          <div className="space-y-2">
+            <p className="text-foreground whitespace-pre-wrap wrap-break-word leading-relaxed text-right max-w-[80%] ml-auto">
               {content}
             </p>
+            {content && (
+              <div className="flex items-center gap-1 justify-end">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                  onClick={handleCopy}
+                  aria-label="Sao chép tin nhắn"
+                >
+                  {isCopied ? (
+                    <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                  onClick={onRetry || (() => {})}
+                  aria-label="Thử lại"
+                  disabled={!onRetry}
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-3 max-w-[80%]">
             {content && (
-              <div className="prose prose-sm dark:prose-invert prose-p:leading-relaxed">
-                <ReactMarkdown>{content}</ReactMarkdown>
+              <div className="space-y-2">
+                <div className="prose prose-sm dark:prose-invert prose-p:leading-relaxed">
+                  <ReactMarkdown>{content}</ReactMarkdown>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                    onClick={handleCopy}
+                    aria-label="Sao chép tin nhắn"
+                  >
+                    {isCopied ? (
+                      <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                    onClick={onRetry || (() => {})}
+                    aria-label="Thử lại"
+                    disabled={!onRetry}
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             )}
             {artifact && (
